@@ -1,0 +1,20 @@
+{
+    "name": "zkp-aggregator Test",
+    "description": "A test for zkp-aggregator.",
+    "image": "",
+    "properties": {
+        "package_name": "zkp-aggregator-test",
+        "current_version": "0.1.0",
+        "publisher": "punctumfix.os",
+        "mirrors": [],
+        "code_hashes": {
+            "0.1.0": ""
+        },
+        "wit_version": 0,
+        "dependencies": [
+            "tester:sys"
+        ]
+    },
+    "external_url": "",
+    "animation_url": ""
+}

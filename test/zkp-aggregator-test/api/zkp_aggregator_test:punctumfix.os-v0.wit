@@ -1,0 +1,4 @@
+world zkp-aggregator-test-punctumfix-dot-os-v0 {
+    import tester;
+    include process-v0;
+}
