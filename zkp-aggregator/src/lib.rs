@@ -1,10 +1,14 @@
 use kinode_process_lib::logging::{error, info, init_logging, Level};
 use kinode_process_lib::{await_message, call_init, println, Address, Message, Response};
+use sp1_sdk::{include_elf};
+
 
 wit_bindgen::generate!({
     path: "target/wit",
     world: "process-v0",
 });
+
+pub const AGGREGATOR_ELF: &[u8] = include_elf!("aggregator-program");
 
 fn handle_message(message: &Message) -> anyhow::Result<()> {
     if !message.is_request() {
