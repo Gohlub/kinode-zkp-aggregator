@@ -1,0 +1,20 @@
+[package]
+name = "zkp-aggregator-ext"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.15"
+futures-util = "0.3"
+url = "2"
+alloy-sol-types = "0.7.7"
+sp1-sdk = "3.2.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenv = "0.15"
+anyhow = "1.0"
+
+
+[build-dependencies]
+sp1-build = "3.2.1"

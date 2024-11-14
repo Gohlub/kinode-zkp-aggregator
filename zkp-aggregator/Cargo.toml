@@ -19,5 +19,3 @@ crate-type = ["cdylib"]
 [package.metadata.component]
 package = "kinode:process"
 
-[build-dependencies]
-sp1-build = "3.2.1"

@@ -1,27 +1,32 @@
-use kinode_process_lib::logging::{error, info, init_logging, Level};
-use kinode_process_lib::{await_message, call_init, println, Address, Message, Response};
-use sp1_sdk::{include_elf};
+use kinode_process_lib::{
+    await_message, call_init, 
+    http::server::{HttpServer, WsBindingConfig},
+    logging::{info, init_logging, Level},
+    Address, Message, kiprintln
+};
 
+const TIMER_ADDRESS: &str = "timer:distro:sys";
 
 wit_bindgen::generate!({
     path: "target/wit",
     world: "process-v0",
 });
 
-pub const AGGREGATOR_ELF: &[u8] = include_elf!("aggregator-program");
 
-fn handle_message(message: &Message) -> anyhow::Result<()> {
-    if !message.is_request() {
-        return Err(anyhow::anyhow!("unexpected Response: {:?}", message));
-    }
-
-    let body: serde_json::Value = serde_json::from_slice(message.body())?;
-    println!("got {body:?}");
-    Response::new()
-        .body(serde_json::to_vec(&serde_json::json!("Ack")).unwrap())
-        .send()
-        .unwrap();
+fn handle_request(source: &Address, body: &[u8]) -> anyhow::Result<()> {
     Ok(())
+}
+
+fn handle_message(_our: &Address, connection: &mut Option<u32>) -> anyhow::Result<()> {
+    let message = await_message()?;
+    match message {
+        Message::Response { .. } => Ok(()),
+        Message::Request { source, body, .. } => {
+            handle_request(&source, &body)?;
+            println!("got request from {source:?} with body {body:?}");
+            Ok(())
+        }
+    }
 }
 
 call_init!(init);
@@ -29,13 +34,17 @@ fn init(our: Address) {
     init_logging(&our, Level::DEBUG, Level::INFO, None, None).unwrap();
     info!("begin");
 
+    let mut connection: Option<u32> = None;
+    let mut http_server = HttpServer::new(5);
+    let ws_config = WsBindingConfig::new(true, false, false, true);
+    http_server.bind_ws_path("/", ws_config).unwrap();
+
     loop {
-        match await_message() {
-            Err(send_error) => error!("got SendError: {send_error}"),
-            Ok(ref message) => match handle_message(message) {
-                Ok(_) => {}
-                Err(e) => error!("got error while handling message: {e:?}"),
-            },
-        }
+        match handle_message(&our, &mut connection) {
+            Ok(()) => {}
+            Err(e) => {
+                kiprintln!("error: {:?}", e);
+            }
+        };
     }
 }

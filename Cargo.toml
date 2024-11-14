@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "zkp-aggregator",
     "aggregator_program",
+    "zkp-aggregator-ext",
 ]
 
 [profile.release]
