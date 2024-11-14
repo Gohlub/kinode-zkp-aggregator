@@ -13,32 +13,41 @@ impl std::fmt::Display for StateError {
         write!(f, "{}", self.0)
     }
 }
+pub type KinodeId = String;
 
 #[derive(Serialize, Deserialize)]
 pub enum TimerType {
     AggregateProofs,
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AggregationInput {
     proof: SP1ProofWithPublicValues,
     vk: SP1VerifyingKey,
 }
+
+impl std::fmt::Debug for AggregationInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AggregationInput")
+            .field("proof", &self.proof)
+            .finish()
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum ProofSubmissionRequest {
     AggregationInput(AggregationInput),
 }
 
-pub type KinodeId = String;
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EpochState {
     proofs_by_kinode_id: HashMap<KinodeId, AggregationInput>,
     current_aggregated_proof: Option<SP1ProofWithPublicValues>,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct State {
-    current_epoch: u64,
-    epoch_history: BTreeMap<u64, EpochState>,
+    pub current_epoch: u64,
+    pub epoch_history: BTreeMap<u64, EpochState>,
 }
 
 impl State {

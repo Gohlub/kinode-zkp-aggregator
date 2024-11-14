@@ -5,24 +5,12 @@ use kinode_process_lib::{
     Address, Message, kiprintln, get_blob, LazyLoadBlob,
     timer::set_timer, get_typed_state,
 };
-#[derive(Debug)]
-pub struct StateError(String);
-impl std::error::Error for StateError {}
-impl std::fmt::Display for StateError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 use sp1_sdk::SP1ProofWithPublicValues;
-
-
-pub type KinodeId = String;
 pub mod structs;
 use structs::*;
 
 const HTTP_SERVER_ADDRESS: &str = "http_server:distro:sys";
 const TIMER_ADDRESS: &str = "timer:distro:sys";
-
 wit_bindgen::generate!({
     path: "target/wit",
     world: "process-v0",
@@ -36,7 +24,8 @@ fn setup_timer() {
 fn handle_timer(_our: &Address,
      context: Option<Vec<u8>>,
      channel_id: &mut Option<u32>,
-     _http_server: &mut HttpServer)
+     _http_server: &mut HttpServer,
+     state: &mut State)
 -> anyhow::Result<()> {
     match context {
         None => Ok(()),
@@ -45,10 +34,21 @@ fn handle_timer(_our: &Address,
             match timer_message {
                 TimerType::AggregateProofs => {
                     let Some(channel_id) = channel_id else {
+                        kiprintln!("No channel id");
                         return Ok(());
                     };
                     // Send aggregate proofs from state
-                   send_ws_push(*channel_id, WsMessageType::Binary, LazyLoadBlob { mime: None, bytes: vec![] });
+                    let proofs: Vec<AggregationInput> = state.get_all_kinode_ids()
+                        .iter()
+                        .filter_map(|kinode_id| state.get_proofs_for_kinode(kinode_id))
+                        .cloned()
+                        .collect();
+                    let serialized_proofs = serde_json::to_vec(&proofs)?;
+                    send_ws_push(*channel_id, WsMessageType::Binary, LazyLoadBlob { mime: None, bytes: serialized_proofs });
+                    
+                    // Go to the next epoch in the state
+                    state.epoch_next();
+                    
                     Ok(())
                 }
             }
@@ -56,9 +56,9 @@ fn handle_timer(_our: &Address,
     }
 }
 
-fn handle_http_server_request(our: &Address,
+fn handle_http_server_request(_our: &Address,
      body: &Vec<u8>,
-     http_server: &mut HttpServer,
+     _http_server: &mut HttpServer,
      channel_id: &mut Option<u32>,
      state: &mut State) -> anyhow::Result<()> {
     let server_request: HttpServerRequest = serde_json::from_slice(body)?;
@@ -73,19 +73,18 @@ fn handle_http_server_request(our: &Address,
             let Some(blob) = get_blob() else {
                 return Ok(());
             };
-
-            let proof_with_values: SP1ProofWithPublicValues = serde_json::from_slice(blob.bytes())?;
-            // ... use proof_with_values
+            let aggregated_proof: SP1ProofWithPublicValues = serde_json::from_slice(blob.bytes())?;
+            state.set_aggregated_proof(aggregated_proof);
         }
         _ => {}
     }
-    
-    
-    
     Ok(())
 }
 
 fn handle_kinode_messages(_our: &Address, source: &Address, body: &Vec<u8>, state: &mut State) -> anyhow::Result<()> {
+    if source.package() == "terminal" {
+        return handle_terminal_debug(&body, state);
+    }
     let proof_submission_request: ProofSubmissionRequest = serde_json::from_slice(body)?;
     match proof_submission_request {
         ProofSubmissionRequest::AggregationInput(aggregation_input) => {
@@ -93,6 +92,39 @@ fn handle_kinode_messages(_our: &Address, source: &Address, body: &Vec<u8>, stat
             Ok(())
         }
     }
+}
+fn handle_terminal_debug(body: &Vec<u8>, state: &mut State) -> anyhow::Result<()> {
+    let body = String::from_utf8(body.to_vec())?;
+    let command = body.as_str();
+    match command {
+        "print_state" => {
+            kiprintln!("Printing state");
+            kiprintln!("State: {:?}", state);
+        }
+        "current_epoch" => {
+            kiprintln!("Current Epoch: {:?}", state.current_epoch);
+            kiprintln!("Epoch State: {:?}", state.epoch_history.get(&state.current_epoch));
+        }
+        "list_epochs" => {
+            kiprintln!("Epochs: {:?}", state.epoch_history.keys().collect::<Vec<&u64>>());
+        }
+        cmd if cmd.starts_with("print_epoch:") => {
+            if let Some(epoch_str) = cmd.split(':').nth(1) {
+                if let Ok(epoch) = epoch_str.parse::<u64>() {
+                    if let Some(epoch_state) = state.epoch_history.get(&epoch) {
+                        kiprintln!("Epoch state for epoch {}: {:?}", epoch, epoch_state);
+                    } else {
+                        kiprintln!("No epoch state found for epoch {}", epoch);
+                    }
+                }
+            }
+        }
+        _ => {
+            kiprintln!("Unknown command: {}", command);
+        }
+    }
+    
+    Ok(())
 }
 
 fn handle_message(
@@ -106,20 +138,21 @@ fn handle_message(
         Message::Response {
             source, context, ..
         } if source.process.to_string().as_str() == TIMER_ADDRESS => {
-            handle_timer(our, context, channel_id, http_server)
+            handle_timer(our, context, channel_id, http_server, state)
         }
-        Message::Request { source, body, .. }
-            if source.process.to_string().as_str() == HTTP_SERVER_ADDRESS =>
-        {
-            if source.node() != our.node() {
-                Ok(())
-            } else {
-                handle_http_server_request(our, &body, http_server, channel_id, state)
+        Message::Request { source, body, .. } => {
+            match source.process.to_string().as_str() {
+                HTTP_SERVER_ADDRESS => {
+                    if source.node() != our.node() {
+                        kiprintln!("I am tring to snoop, my name is: {:?}", source.node());
+                        Ok(())
+                    } else {
+                        handle_http_server_request(our, &body, http_server, channel_id, state)
+                    }
+                }
+                _ => handle_kinode_messages(our, &source, &body, state),
             }
         }
-        Message::Request {
-            ref source, body, ..
-        } => handle_kinode_messages(our, source, &body, state),
         Message::Response { .. } => {
             Ok(())
         }
@@ -129,6 +162,7 @@ fn handle_message(
 call_init!(init);
 fn init(our: Address) {
     init_logging(&our, Level::DEBUG, Level::INFO, None, None).unwrap();
+    kiprintln!("Initializing zkp-aggregator");
     info!("begin");
     setup_timer();
 

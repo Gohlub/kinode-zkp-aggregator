@@ -8,3 +8,4 @@ pkg/*.zip
 */wit/
 */process_env
 .env
+*.DS_Store
