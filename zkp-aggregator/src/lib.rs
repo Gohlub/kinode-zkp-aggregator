@@ -3,10 +3,22 @@ use kinode_process_lib::{
     http::server::{HttpServer, WsBindingConfig, HttpServerRequest, WsMessageType, send_ws_push},
     logging::{info, init_logging, Level},
     Address, Message, kiprintln, get_blob, LazyLoadBlob,
-    timer::set_timer,
+    timer::set_timer, get_typed_state,
 };
+#[derive(Debug)]
+pub struct StateError(String);
+impl std::error::Error for StateError {}
+impl std::fmt::Display for StateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 use sp1_sdk::SP1ProofWithPublicValues;
-use serde::{Serialize, Deserialize};
+
+
+pub type KinodeId = String;
+pub mod structs;
+use structs::*;
 
 const HTTP_SERVER_ADDRESS: &str = "http_server:distro:sys";
 const TIMER_ADDRESS: &str = "timer:distro:sys";
@@ -16,10 +28,6 @@ wit_bindgen::generate!({
     world: "process-v0",
 });
 
-#[derive(Serialize, Deserialize)]
-pub enum TimerType {
-    AggregateProofs,
-}
 // Request to the extension to aggregate proofs
 fn setup_timer() {
     set_timer(86400000, Some(serde_json::to_vec(&TimerType::AggregateProofs).unwrap()));
@@ -28,7 +36,7 @@ fn setup_timer() {
 fn handle_timer(_our: &Address,
      context: Option<Vec<u8>>,
      channel_id: &mut Option<u32>,
-     http_server: &mut HttpServer)
+     _http_server: &mut HttpServer)
 -> anyhow::Result<()> {
     match context {
         None => Ok(()),
@@ -39,6 +47,7 @@ fn handle_timer(_our: &Address,
                     let Some(channel_id) = channel_id else {
                         return Ok(());
                     };
+                    // Send aggregate proofs from state
                    send_ws_push(*channel_id, WsMessageType::Binary, LazyLoadBlob { mime: None, bytes: vec![] });
                     Ok(())
                 }
@@ -47,7 +56,11 @@ fn handle_timer(_our: &Address,
     }
 }
 
-fn handle_http_server_request(our: &Address, body: &Vec<u8>, http_server: &mut HttpServer, channel_id: &mut Option<u32>) -> anyhow::Result<()> {
+fn handle_http_server_request(our: &Address,
+     body: &Vec<u8>,
+     http_server: &mut HttpServer,
+     channel_id: &mut Option<u32>,
+     state: &mut State) -> anyhow::Result<()> {
     let server_request: HttpServerRequest = serde_json::from_slice(body)?;
     match server_request {
         HttpServerRequest::WebSocketOpen{channel_id: ws_channel_id, ..} => {
@@ -72,14 +85,21 @@ fn handle_http_server_request(our: &Address, body: &Vec<u8>, http_server: &mut H
     Ok(())
 }
 
-fn handle_kinode_messages(our: &Address, source: &Address, body: &Vec<u8>) -> anyhow::Result<()> {
-    Ok(())
+fn handle_kinode_messages(_our: &Address, source: &Address, body: &Vec<u8>, state: &mut State) -> anyhow::Result<()> {
+    let proof_submission_request: ProofSubmissionRequest = serde_json::from_slice(body)?;
+    match proof_submission_request {
+        ProofSubmissionRequest::AggregationInput(aggregation_input) => {
+            state.add_proof(source.to_string(), aggregation_input);
+            Ok(())
+        }
+    }
 }
 
 fn handle_message(
     our: &Address,
     channel_id: &mut Option<u32>,
     http_server: &mut HttpServer,
+    state: &mut State,
 ) -> anyhow::Result<()> {
     let message = await_message()?;
     match message {
@@ -94,12 +114,12 @@ fn handle_message(
             if source.node() != our.node() {
                 Ok(())
             } else {
-                handle_http_server_request(our, &body, http_server, channel_id)
+                handle_http_server_request(our, &body, http_server, channel_id, state)
             }
         }
         Message::Request {
             ref source, body, ..
-        } => handle_kinode_messages(our, source, &body),
+        } => handle_kinode_messages(our, source, &body, state),
         Message::Response { .. } => {
             Ok(())
         }
@@ -112,13 +132,15 @@ fn init(our: Address) {
     info!("begin");
     setup_timer();
 
+    let mut state: State = get_typed_state(|bytes| State::load(bytes)).unwrap_or_default();
+
     let mut connection: Option<u32> = None;
     let mut http_server = HttpServer::new(5);
     let ws_config = WsBindingConfig::new(true, false, false, true);
     http_server.bind_ws_path("/", ws_config).unwrap();
 
     loop {
-        match handle_message(&our, &mut connection, &mut http_server) {
+        match handle_message(&our, &mut connection, &mut http_server, &mut state) {
             Ok(()) => {}
             Err(e) => {
                 kiprintln!("error: {:?}", e);
