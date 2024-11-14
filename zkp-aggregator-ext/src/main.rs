@@ -23,6 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let url = Url::parse("ws://localhost:8080/zkp-aggregator:zkp-aggregator:punctumfix.os").unwrap();
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
     let (mut write, mut read) = ws_stream.split();
+    write.send(Message::Text("Thank you kind sir!".to_string())).await?;
     
     println!("WebSocket connected!");
 

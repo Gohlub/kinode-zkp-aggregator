@@ -8,7 +8,11 @@
             "http_server:distro:sys",
             "vfs:distro:sys"
         ],
-        "grant_capabilities": [],
+        "grant_capabilities": [
+            "http_server:distro:sys",
+            "timer:distro:sys",
+            "vfs:distro:sys"
+        ],
         "public": true
     }
 ]
