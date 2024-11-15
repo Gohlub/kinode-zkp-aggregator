@@ -64,6 +64,7 @@ fn handle_http_server_request(_our: &Address,
     let server_request: HttpServerRequest = serde_json::from_slice(body)?;
     match server_request {
         HttpServerRequest::WebSocketOpen{channel_id: ws_channel_id, ..} => {
+            kiprintln!("WebSocket opened");
             *channel_id = Some(ws_channel_id);
         }
         HttpServerRequest::WebSocketClose{..} => {
@@ -170,7 +171,7 @@ fn init(our: Address) {
 
     let mut connection: Option<u32> = None;
     let mut http_server = HttpServer::new(5);
-    let ws_config = WsBindingConfig::new(true, false, false, true);
+    let ws_config = WsBindingConfig::new(false, false, false, true);
     http_server.bind_ws_path("/", ws_config).unwrap();
 
     loop {
