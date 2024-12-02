@@ -16,22 +16,24 @@ forge test -v
 
 #### Step 1: Set the `VERIFIER` environment variable
 
-Find the address of the `verifer` to use from the [deployments](https://github.com/succinctlabs/sp1-contracts/tree/main/contracts/deployments) list for the chain you are deploying to. Set it to the `VERIFIER` environment variable, for example:
-
+Find the address of the `verifer` to use from the [contract addresses](https://docs.succinct.xyz/verification/onchain/contract-addresses.html) list for the chain you are deploying to. Set it to the `VERIFIER` environment variable, for example:
+This is the verifier of the Groth16 proof on Optimism mainnet.
 ```sh
-VERIFIER=0x3B6041173B80E77f038f3F2C0f9744f04837185e
+VERIFIER=0x397A5f7f3dBd538f23DE225B51f532c34448dA9B
 ```
 
 Note: you can use either the [SP1VerifierGateway](https://github.com/succinctlabs/sp1-contracts/blob/main/contracts/src/SP1VerifierGateway.sol) or a specific version, but it is highly recommended to use the gateway as this will allow you to use different versions of SP1.
 
 #### Step 2: Set the `PROGRAM_VKEY` environment variable
+To generate the elf (and the verification key), you will need to install Succinct Labs' `sp1` toolchain. You can find the instructions [here](https://github.com/succinctlabs/sp1). Then, to generate the elf, run:
+```sh
+cd /aggregator_program
+cargo prove build
+cargo prove vkey --elf <ELF_PATH>
+```
+This will generate the verification key you will then set in the environment variables for the contract deployment.
 
-Find your program verification key by going into the `../script` directory and running `RUST_LOG=info cargo run --package aggregator_program --bin vkey --release`, which will print an output like:
-
-> Program Verification Key: 0x00620892344c310c32a74bf0807a5c043964264e4f37c96a10ad12b5c9214e0e
-
-Then set the `PROGRAM_VKEY` environment variable to the output of that command, for example:
-
+For example:
 ```sh
 PROGRAM_VKEY=0x00620892344c310c32a74bf0807a5c043964264e4f37c96a10ad12b5c9214e0e
 ```
@@ -41,17 +43,17 @@ PROGRAM_VKEY=0x00620892344c310c32a74bf0807a5c043964264e4f37c96a10ad12b5c9214e0e
 Fill out the rest of the details needed for deployment:
 
 ```sh
-RPC_URL=...
+CURRENT_RPC_URL=...
 ```
 
 ```sh
-PRIVATE_KEY=...
+WALLET_PRIVATE_KEY=...
 ```
 
 Then deploy the contract to the chain:
 
 ```sh
-forge create src/SP1AggregateVerifier.sol:SP1AggregateVerifier --rpc-url $RPC_URL --private-key $PRIVATE_KEY --constructor-args $VERIFIER $PROGRAM_VKEY
+forge create src/SP1AggregateVerifier.sol:SP1AggregateVerifier --rpc-url $CURRENT_RPC_URL --private-key $WALLET_PRIVATE_KEY --constructor-args $VERIFIER $PROGRAM_VKEY
 ```
 
 It can also be a good idea to verify the contract when you deploy, in which case you would also need to set `ETHERSCAN_API_KEY`:
@@ -59,6 +61,8 @@ It can also be a good idea to verify the contract when you deploy, in which case
 ```sh
 forge create src/SP1AggregateVerifier.sol:SP1AggregateVerifier --rpc-url $CURRENT_RPC_URL --private-key $PRIVATE_KEY --constructor-args $VERIFIER $PROGRAM_VKEY --verify --verifier etherscan --etherscan-api-key $ETHERSCAN_API_KEY
 ```
+
+To interact with the contract, refer to the terminal debug commands in the main [README](../README.md).
 
 ## Proof Construction
 

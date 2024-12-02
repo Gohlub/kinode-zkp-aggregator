@@ -1,6 +1,6 @@
 use kinode_process_lib::{logging::error, set_state};
 use serde::{Deserialize, Serialize};
-use shared_types::{AggregationInput, AggregationOutput, DummyProofInsert, WsMessage};
+use shared_types::AggregationInput;
 use sp1_sdk::SP1ProofWithPublicValues;
 use std::collections::{BTreeMap, HashMap};
 
