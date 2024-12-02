@@ -4,6 +4,7 @@ members = [
     "zkp-aggregator",
     "aggregator_program",
     "zkp-aggregator-ext",
+    "shared_types",
 ]
 
 [profile.release]

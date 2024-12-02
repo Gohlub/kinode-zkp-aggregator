@@ -12,7 +12,22 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wit-bindgen = "0.24.0"
 sp1-sdk = { version = "3.2.1", default-features = false}
-
+alloy-sol-types = { version = "0.7.6", features = ["json"] }
+alloy-primitives = "0.7.6"
+alloy-rlp = "0.3.5"
+alloy-contract = "0.1.3"
+alloy = { version = "0.1.2", features = [
+    "network",
+    "signers",
+    "signer-local",
+    "json-rpc",
+    "consensus",
+    "rpc-types"
+]}
+lazy_static = "1.4.0"
+dotenvy = "0.15.0"
+hex = "0.4.3"   
+shared_types = { path = "../shared_types" }
 
 [lib]
 crate-type = ["cdylib"]

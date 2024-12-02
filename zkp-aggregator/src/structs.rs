@@ -1,10 +1,9 @@
-use kinode_process_lib::{
-    logging::error,
-    set_state,
-};
-use sp1_sdk::{SP1ProofWithPublicValues, SP1VerifyingKey};
-use serde::{Serialize, Deserialize};
-use std::collections::{HashMap, BTreeMap};
+use kinode_process_lib::{logging::error, set_state};
+use serde::{Deserialize, Serialize};
+use shared_types::{AggregationInput, AggregationOutput, DummyProofInsert, WsMessage};
+use sp1_sdk::SP1ProofWithPublicValues;
+use std::collections::{BTreeMap, HashMap};
+
 #[derive(Debug)]
 pub struct StateError(String);
 impl std::error::Error for StateError {}
@@ -19,23 +18,10 @@ pub type KinodeId = String;
 pub enum TimerType {
     AggregateProofs,
 }
-#[derive(Serialize, Deserialize, Clone)]
-pub struct AggregationInput {
-    proof: SP1ProofWithPublicValues,
-    vk: SP1VerifyingKey,
-}
-
-impl std::fmt::Debug for AggregationInput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AggregationInput")
-            .field("proof", &self.proof)
-            .finish()
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum ProofSubmissionRequest {
-    AggregationInput(AggregationInput),
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ProofSubmissionRequest {
+    pub source: KinodeId,
+    pub aggregation_input: AggregationInput,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -44,10 +30,32 @@ pub struct EpochState {
     current_aggregated_proof: Option<SP1ProofWithPublicValues>,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug)]
+impl Default for EpochState {
+    fn default() -> Self {
+        Self {
+            proofs_by_kinode_id: HashMap::new(),
+            current_aggregated_proof: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct State {
     pub current_epoch: u64,
     pub epoch_history: BTreeMap<u64, EpochState>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        let mut epoch_history = BTreeMap::new();
+        // Initialize with epoch 0
+        epoch_history.insert(0, EpochState::default());
+
+        Self {
+            current_epoch: 0,
+            epoch_history,
+        }
+    }
 }
 
 impl State {
@@ -73,18 +81,17 @@ impl State {
 
         // Increment epoch
         self.current_epoch += 1;
-        
+
         // Store the new epoch state
-        self.epoch_history.insert(self.current_epoch, new_epoch_state);
+        self.epoch_history
+            .insert(self.current_epoch, new_epoch_state);
     }
 
     pub fn add_proof(&mut self, kinode_id: KinodeId, proof: AggregationInput) -> bool {
         let is_new = self
             .current_epoch_state_mut()
             .map(|state| {
-                state.proofs_by_kinode_id
-                    .entry(kinode_id)
-                    .or_insert(proof);
+                state.proofs_by_kinode_id.entry(kinode_id).or_insert(proof);
                 true
             })
             .unwrap_or(false);

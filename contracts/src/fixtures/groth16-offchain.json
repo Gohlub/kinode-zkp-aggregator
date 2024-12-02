@@ -1,0 +1,17 @@
+{
+  "verificationKeys": [
+    "0xf9bb65429de02b240b329b43576de3649bfe1a6ca25ad52a798ffd42a9008b1b",
+    "0xf9bb65429de02b240b329b43576de3649bfe1a6ca25ad52a798ffd42a9008b1b",
+    "0xf9bb65429de02b240b329b43576de3649bfe1a6ca25ad52a798ffd42a9008b1b"
+  ],
+  "publicValues": [
+    "0x0a0000003700000059000000",
+    "0x140000006d1a0000d30b0000",
+    "0x1e0000002102000027000000"
+  ],
+  "leafIndices": [
+    0,
+    1,
+    2
+  ]
+}

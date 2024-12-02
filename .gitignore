@@ -9,3 +9,6 @@ pkg/*.zip
 */process_env
 .env
 *.DS_Store
+/contracts/cache/*
+/contracts/out/*
+/contracts/lib/*

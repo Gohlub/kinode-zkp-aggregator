@@ -6,12 +6,14 @@
         "request_networking": true,
         "request_capabilities": [
             "http_server:distro:sys",
-            "vfs:distro:sys"
+            "vfs:distro:sys",
+            "eth:distro:sys"
         ],
         "grant_capabilities": [
             "http_server:distro:sys",
             "timer:distro:sys",
-            "vfs:distro:sys"
+            "vfs:distro:sys",
+            "eth:distro:sys"
         ],
         "public": true
     }
