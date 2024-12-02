@@ -40,10 +40,11 @@ You can utilize the terminal debugger to inspect the proofs and the state of the
 - `/zkp-aggregator` - contains the aggregator process.
 - `/zkp-aggregator-ext` - contains the Websocket client.
 - `/shared_types` - contains the shared types between the aggregator and client.
-- `/aggregator_program` - contains the aggregator program. The binary if this program is sent to the prover network along with the inputs.
+- `/aggregator_program` - contains the aggregator program. The binary of this program is sent to the prover network along with the inputs.
 - `/elf` - contains the ELF binary of the aggregator program. Since every program will have a different verification key, it is suggested that you generate your own. You will need to set the verification key of your program since it deployed along with the contract (it does not change depending on input, just the program).
 
 ### Note on ZKP and Kinode
 Succinct's ZKP *sp1* toolchain and SDK are currently incompatible with WASM due to complicated dependacy conflicts. To that point, interfacing with the SDK is done mostly through a Websocket client.
 
+### Using the Prover Network
 For using the prover network, refer to the [Succinct Labs Prover Network Documentation](https://docs.succinct.xyz/generating-proofs/prover-network.html) for setting up your API Key, and make sure to set the `SP1_PRIVATE_KEY` environment variable.
