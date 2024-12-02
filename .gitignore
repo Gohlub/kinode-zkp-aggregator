@@ -8,7 +8,7 @@ pkg/*.zip
 */wit/
 */process_env
 .env
-*.DS_Store
+**/*.DS_Store
 /contracts/cache/*
 /contracts/out/*
 /contracts/lib/*
