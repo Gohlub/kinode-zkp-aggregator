@@ -3,6 +3,8 @@
 ## Dev setup
 Order matters. The zkp-aggregator process assumes the contract is deployed and live. The instructions to deploy the contract are in the [contracts README](./contracts/README.md).
 
+Also, make sure that you have the appropriate providers set in the .eth_providers file on your node.
+
 To run the aggregator program, you must install the process to a local live node with:
 
 ```sh
